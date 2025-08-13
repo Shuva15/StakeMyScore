@@ -39,8 +39,7 @@ pub struct PlacePrediction<'info> {
         seeds = [ESCROW_SEED, game.key().as_ref()],
         bump = game.escrow_bump
     )]
-    /// CHECK: Just a system account holding SOL
-    pub escrow_vault: UncheckedAccount<'info>,
+    pub escrow_vault: SystemAccount<'info>,
 
     #[account(mut)]
     pub bettor: Signer<'info>,

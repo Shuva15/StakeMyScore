@@ -18,7 +18,7 @@ pub struct ClaimOrRefund<'info> {
 
     #[account(
         mut,
-        seeds = [BETTOR_SEED, bettor_account.bettor.as_ref(), game.key().as_ref()],
+        seeds = [BETTOR_SEED, game.key().as_ref(), bettor.key().as_ref()],
         bump = bettor_account.bump,
         has_one = bettor @ StakeMyScoreError::UnauthorizedBettor,
         close = bettor
@@ -28,7 +28,11 @@ pub struct ClaimOrRefund<'info> {
     #[account(mut)]
     pub bettor: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [ESCROW_SEED, game.key().as_ref()],
+        bump = game.escrow_bump,
+    )]
     pub escrow_vault: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -39,15 +43,17 @@ impl<'info> ClaimOrRefund<'info> {
         // Winners case
         if self.game.is_any_winner {
             require!(self.bettor_account.is_winner, StakeMyScoreError::NotAWinner);
+            require!(self.game.fee_collected, StakeMyScoreError::FeeNotCollected);
 
+            self.bettor_account.is_winner = false;
             let payout = self.game.payout_amount;
 
+            let game = self.game.key();
             // Transfer payout to bettor
             let seeds = &[
-                GAME_SEED,
-                self.game.match_id.as_bytes(),
-                &self.game.pool_index.to_le_bytes(),
-                &[self.game.bump],
+                ESCROW_SEED,
+                game.as_ref(),
+                &[self.game.escrow_bump],
             ];
             let signer_seeds = &[&seeds[..]];
 
@@ -59,16 +65,16 @@ impl<'info> ClaimOrRefund<'info> {
                 },
                 signer_seeds,
             );
-            transfer(cpi_ctx, payout as u64 * LAMPORTS_PER_SOL)?;
+            transfer(cpi_ctx, payout)?;
         }
         // Refund case (no winners)
         else {
             // Refund fixed stake amount
+            let game = self.game.key();
             let seeds = &[
-                GAME_SEED,
-                self.game.match_id.as_bytes(),
-                &self.game.pool_index.to_le_bytes(),
-                &[self.game.bump],
+                ESCROW_SEED,
+                game.as_ref(),
+                &[self.game.escrow_bump],
             ];
             let signer_seeds = &[&seeds[..]];
 

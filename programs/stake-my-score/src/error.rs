@@ -20,13 +20,22 @@ pub enum StakeMyScoreError {
     #[msg("Pool is not yet settled")]
     PoolNotSettled,
 
+    #[msg("The bettor account provided is invalid")]
+    InvalidBettorAccount,
+
     #[msg("If no winners, there shouldn't be any winner accounts")]
     UnexpectedWinnerAccounts,
+
+    #[msg("Winners can't be empty")]
+    NoWinnersProvided,
 
     #[msg("Wrong bettor account")]
     UnauthorizedBettor,
 
     #[msg("You didn't win")]
     NotAWinner,
+
+    #[msg("Fee yet not collected")]
+    FeeNotCollected
 
 }

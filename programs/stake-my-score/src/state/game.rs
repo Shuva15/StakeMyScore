@@ -22,7 +22,7 @@ pub struct GameAccount {
     pub is_any_winner: bool,
     /// Number of winners identified after settlement
     pub winner_count: u8,
-    pub payout_amount: u8,
+    pub payout_amount: u64,
     pub final_runs: Option<u16>,
     pub final_wickets: Option<u8>,
     pub fee_collected: bool,

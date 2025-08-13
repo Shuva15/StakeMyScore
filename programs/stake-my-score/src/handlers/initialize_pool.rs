@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::native_token::LAMPORTS_PER_SOL;
+use anchor_lang::system_program::{transfer, Transfer};
 use crate::state::{GameAccount, PoolState};
 use crate::constants::*;
 
@@ -22,14 +24,11 @@ pub struct InitializePool<'info> {
     pub oracle: UncheckedAccount<'info>,
 
     #[account(
-        init,
-        payer = payer,
+        mut,
         seeds = [ESCROW_SEED, game.key().as_ref()],
         bump,
-        space = 8
     )]
-    /// CHECK: Escrow vault for holding SOL
-    pub escrow_vault: UncheckedAccount<'info>,
+    pub escrow_vault: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -46,6 +45,17 @@ impl<'info> InitializePool<'info> {
         escrow_bump: u8,
     ) -> Result<()> {
 
+        let rent_exempt = Rent::get()?.minimum_balance(self.escrow_vault.to_account_info().data_len());
+
+        let cpi_accounts = Transfer {
+            from: self.payer.to_account_info(),
+            to: self.escrow_vault.to_account_info()
+        };
+
+        let cpi_ctx = CpiContext::new(self.system_program.to_account_info(), cpi_accounts);
+
+        transfer(cpi_ctx, rent_exempt)?;
+
         self.game.set_inner(GameAccount { 
             bump, 
             match_id, 
@@ -57,7 +67,7 @@ impl<'info> InitializePool<'info> {
             pool_state: PoolState::Open,
             is_any_winner: false,
             winner_count: 0,
-            payout_amount: 1,
+            payout_amount: FIXED_STAKE_SOL,
             final_runs: None,
             final_wickets: None,
             fee_collected: false,
