@@ -22,6 +22,7 @@ impl<'info> SubmitResult<'info> {
         final_runs: u16,
         final_wickets: u8,
     ) -> Result<()> {
+        require!(self.game.final_runs == None && self.game.final_wickets == None, StakeMyScoreError::ResultsAlreadyExcepted);
         // write final score and mark settled
         self.game.final_runs = Some(final_runs);
         self.game.final_wickets = Some(final_wickets);

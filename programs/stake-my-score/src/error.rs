@@ -36,6 +36,8 @@ pub enum StakeMyScoreError {
     NotAWinner,
 
     #[msg("Fee yet not collected")]
-    FeeNotCollected
+    FeeNotCollected,
 
+    #[msg("Result is already updated")]
+    ResultsAlreadyExcepted
 }
