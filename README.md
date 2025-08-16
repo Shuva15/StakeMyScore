@@ -1,0 +1,1 @@
+devnet contract address - GP4V3sVgGuqTWAbmBn6T6ZCxtzBE2o5zsudYQS1YzjGQ
