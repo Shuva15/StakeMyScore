@@ -8,6 +8,7 @@ import {
 } from "@solana/web3.js";
 import { assert, expect } from "chai";
 import { StakeMyScore } from "../target/types/stake_my_score";
+import * as helpers from "./helpers";
 
 const GAME_SEED = Buffer.from("game");
 const ESCROW_SEED = Buffer.from("escrow");
@@ -36,7 +37,7 @@ describe("stake_my_score, full flow with two pools", () => {
   let game2Pda: PublicKey, escrow2Pda: PublicKey;
 
   // Keypair of all the bettors, to sign the claim_or_refund instruction
-  // In practical the bettor will siging this instruction with their wallet so we won't have to store it
+  // In practical the bettor will be signing this instruction with their wallet so we won't have to store it
   const bettorsGame1: Keypair[] = [];
   const bettorsGame2: Keypair[] = [];
 
@@ -58,21 +59,10 @@ describe("stake_my_score, full flow with two pools", () => {
     bump: number;
   }>[] = [];
 
-  async function airdrop(pubkey: PublicKey, sol: number) {
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(pubkey, sol * LAMPORTS_PER_SOL),
-      "confirmed"
-    );
-  }
-
-  async function lamports(pubkey: PublicKey) {
-    return provider.connection.getBalance(pubkey, "confirmed");
-  }
-
   it("1) Initialize pool 1", async () => {
-    await airdrop(payer, 6);
-    await airdrop(oracle.publicKey, 2);
-    await airdrop(feeReceiver.publicKey, 1);
+    await helpers.airdrop(provider.connection, payer, 6);
+    await helpers.airdrop(provider.connection, oracle.publicKey, 2);
+    await helpers.airdrop(provider.connection, feeReceiver.publicKey, 1);
 
     [game1Pda] = PublicKey.findProgramAddressSync(
       [
@@ -103,7 +93,7 @@ describe("stake_my_score, full flow with two pools", () => {
     for (let i = 0; i < MAX_BETTORS; i++) {
       const bettor = Keypair.generate();
       bettorsGame1.push(bettor);
-      await airdrop(bettor.publicKey, 2);
+      await helpers.airdrop(provider.connection, bettor.publicKey, 2);
 
       const [bettorPda] = PublicKey.findProgramAddressSync(
         [BETTOR_SEED, game1Pda.toBuffer(), bettor.publicKey.toBuffer()],
@@ -128,13 +118,13 @@ describe("stake_my_score, full flow with two pools", () => {
     }
     console.log(
       "Pool one escrow balance after 200 bet: ",
-      await lamports(escrow1Pda)
+      await helpers.lamports(provider.connection, escrow1Pda)
     );
   });
 
   it("3) 201st bettor should fail with PoolFull", async () => {
     const extra = Keypair.generate();
-    await airdrop(extra.publicKey, 2);
+    await helpers.airdrop(provider.connection, extra.publicKey, 2);
 
     const [bettorPda] = PublicKey.findProgramAddressSync(
       [BETTOR_SEED, game1Pda.toBuffer(), extra.publicKey.toBuffer()],
@@ -187,7 +177,7 @@ describe("stake_my_score, full flow with two pools", () => {
     for (let i = 0; i < 50; i++) {
       const bettor = Keypair.generate();
       bettorsGame2.push(bettor);
-      await airdrop(bettor.publicKey, 2);
+      await helpers.airdrop(provider.connection, bettor.publicKey, 2);
 
       const [bettorPda] = PublicKey.findProgramAddressSync(
         [BETTOR_SEED, game2Pda.toBuffer(), bettor.publicKey.toBuffer()],
@@ -211,7 +201,7 @@ describe("stake_my_score, full flow with two pools", () => {
     }
     console.log(
       "Pool two escrow balance after 50 bet: ",
-      await lamports(escrow2Pda)
+      await helpers.lamports(provider.connection, escrow2Pda)
     );
   });
 
@@ -236,7 +226,7 @@ describe("stake_my_score, full flow with two pools", () => {
 
     // Try to add bettor to locked pool2
     const lateBettor = Keypair.generate();
-    await airdrop(lateBettor.publicKey, 2);
+    await helpers.airdrop(provider.connection, lateBettor.publicKey, 2);
     const [lateBettorPda] = PublicKey.findProgramAddressSync(
       [BETTOR_SEED, game2Pda.toBuffer(), lateBettor.publicKey.toBuffer()],
       program.programId
@@ -423,7 +413,7 @@ describe("stake_my_score, full flow with two pools", () => {
     );
     console.log("Updated isWinner:", updatedAcc.isWinner);
     // Check fee transferred to feeReceiver
-    const feeBal = await lamports(feeReceiver.publicKey);
+    const feeBal = await helpers.lamports(provider.connection, feeReceiver.publicKey);
     const expectedFee =
       (MAX_BETTORS * FIXED_STAKE_SOL * PLATFORM_FEE_BPS) / BPS_DENOMINATOR;
     console.log(
@@ -460,7 +450,7 @@ describe("stake_my_score, full flow with two pools", () => {
     // console.log("payout amount: ", payoutAmount);
 
     for (const pda of winnersG1) {
-      const before = await lamports(pda.account.bettor);
+      const before = await helpers.lamports(provider.connection, pda.account.bettor);
 
       const bettorKp = bettorsGame1.find(
         (b) => b.publicKey.toBase58() === pda.account.bettor.toBase58()
@@ -477,7 +467,7 @@ describe("stake_my_score, full flow with two pools", () => {
         .signers([bettorKp])
         .rpc({ commitment: "confirmed" });
 
-      const after = await lamports(pda.account.bettor);
+      const after = await helpers.lamports(provider.connection, pda.account.bettor);
       // console.log("\nbefore balance: ", before, "\nafter balance: ", after, "\nbalance difference should be equal to payout + account close rent: ", after - before)
       assert.isAtLeast(after - before, payoutAmount, "Winner got payout");
     }
@@ -522,7 +512,7 @@ describe("stake_my_score, full flow with two pools", () => {
       const bettorKp = bettorsGame2.find((b) =>
         b.publicKey.equals(acc.account.bettor)
       )!;
-      const before = await lamports(bettorKp.publicKey);
+      const before = await helpers.lamports(provider.connection, bettorKp.publicKey);
 
       await program.methods
         .claimOrRefund()
@@ -536,7 +526,7 @@ describe("stake_my_score, full flow with two pools", () => {
         .signers([bettorKp])
         .rpc({ commitment: "confirmed" });
 
-      const after = await lamports(bettorKp.publicKey);
+      const after = await helpers.lamports(provider.connection, bettorKp.publicKey);
       assert.isAtLeast(after - before, FIXED_STAKE_SOL, "Refund correct");
     }
   });

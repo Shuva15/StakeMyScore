@@ -10,7 +10,7 @@ pub use constants::*;
 pub use handlers::*;
 pub use state::*;
 
-declare_id!("9Q1JwQXUPo48F1vdGZgJ7FSHwGnBVKLEcbRwwspTryEH");
+declare_id!("GP4V3sVgGuqTWAbmBn6T6ZCxtzBE2o5zsudYQS1YzjGQ");
 
 #[program]
 pub mod stake_my_score {
